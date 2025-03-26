@@ -16,11 +16,11 @@ export function ChartNSH({ data }: ChartNSHProps) {
   const chartConfig = {
     bpm: {
       label: "BPM",
-      color: "green",
+      color: "var(--color-sky-500)",
     },
     ur: {
       label: "UR",
-      color: "yellow",
+      color: "var(--color-indigo-500)",
     },
   } satisfies ChartConfig;
 
@@ -44,7 +44,7 @@ export function ChartNSH({ data }: ChartNSHProps) {
             tickLine={true}
             axisLine={false}
             tickMargin={8}
-            tickFormatter={(value) => value.slice(0, 3)}
+            tickFormatter={(value) => value.toString().slice(0, 3)}
           />
           {/* <YAxis
             dataKey="seconds"
