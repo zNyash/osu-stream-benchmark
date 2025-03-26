@@ -25,6 +25,10 @@ export default function Home() {
   }
 
   function toggleIsRunningBenchmark() {
+    if (!isRunningBenchmark) {
+        setChartPoints([]);
+    }
+      
     setIsRunningBenchmark(!isRunningBenchmark);
   }
 
