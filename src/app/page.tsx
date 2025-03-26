@@ -8,10 +8,6 @@ import { Clock, MousePointerClick } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ChartNSH } from "@/components/ChartNSH";
 
-function getBpm(clicks: number, ms: number): number {
-  return Math.floor((clicks / ms) * 15000);
-}
-
 export default function Home() {
   const [isRunningBenchmark, setIsRunningBenchmark] = useState<boolean>(false);
   const [chartPoints, setChartPoints] = useState<ChartPoint[]>([]);
@@ -24,8 +20,16 @@ export default function Home() {
   const inputRef1 = useRef<HTMLInputElement>(null!);
   const inputRef2 = useRef<HTMLInputElement>(null!);
 
-  function startBenchmark() {
+  function getBpm(clicks: number, ms: number): number {
+    return Math.floor((clicks / ms) * 15000);
+  }
+
+  function toggleIsRunningBenchmark() {
     setIsRunningBenchmark(!isRunningBenchmark);
+  }
+
+  function startBenchmark() {
+    toggleIsRunningBenchmark();
   }
 
   // Setting keybinds to default if empty and select new Keybind
@@ -44,7 +48,7 @@ export default function Home() {
   useEffect(() => {
     window.onkeydown = (e) => {
       if (e.key === " " && !isRunningBenchmark) {
-        setIsRunningBenchmark(true);
+        toggleIsRunningBenchmark();
         console.log("Benchmarking");
         return;
       }
