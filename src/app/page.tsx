@@ -31,18 +31,21 @@ export default function Home() {
     const values = chartPointTimestamps.map(
       (timestamp) => timestamp - chartPointTimestamps[0],
     );
+    const ms = values[values.length - 1] - values[0];
 
     console.log("values: ", values);
-    const timeDif =
-      (chartPointTimestamps.at(-1) as number) - chartPointTimestamps[0];
-    const avg = timeDif / values.length;
+    const avg = ms / (values.length - 1);
     console.log("avg: ", avg);
 
-    const deviations = values.map((value, index) => {
-      const idealTime = values[0] + avg * index;
+    const deviations = values.map((value, i) => {
+      if (i == 0) {
+        return 0;
+      }
 
-      return Math.abs(idealTime - value);
-    });
+      const dif = value - values[i];
+
+      return Math.abs(avg * i - dif);
+    }).slice(1);
     console.log("deviations: ", deviations);
 
     const variance = _.sum(deviations);
