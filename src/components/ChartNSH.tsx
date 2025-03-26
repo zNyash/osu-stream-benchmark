@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/chart";
 import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
 import { ChartPoint } from "@/app/types/chart-point";
+import _ from "lodash";
 
 interface ChartNSHProps {
   data: Array<ChartPoint>;
@@ -44,7 +45,7 @@ export function ChartNSH({ data }: ChartNSHProps) {
             tickLine={true}
             axisLine={false}
             tickMargin={8}
-            tickFormatter={(value) => value.toString().slice(0, 3)}
+            tickFormatter={(value) => {return (_.round((value), 2)).toString()}}
           />
           {/* <YAxis
             dataKey="seconds"

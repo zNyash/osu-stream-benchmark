@@ -6,67 +6,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Clock, MousePointerClick } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChartNSH } from "@/components/ChartNSH";
+import { getBpm, getUr } from "../../helpers/osuCalc";
 
 export default function Home() {
   // Chart Related
   const [isRunningBenchmark, setIsRunningBenchmark] = useState<boolean>(false);
   const [chartPoints, setChartPoints] = useState<ChartPoint[]>([]);
-
   // Keybind variables & default
   const [key1, setKey1] = useState<string>("Z");
   const [key2, setKey2] = useState<string>("X");
-
   // Counter mode (Clicks or Seconds)
   const [mode, setMode] = useState<"clicks" | "seconds">("clicks");
-
   // Default values for each mode (can also update then)
   const [clicks, setClicks] = useState<number>(100);
   const [seconds, setSeconds] = useState<number>(60);
   const inputRef1 = useRef<HTMLInputElement>(null!);
   const inputRef2 = useRef<HTMLInputElement>(null!);
+  const [BPM, setBPM] = useState<number>(0);
 
-  function getUr(chartPointTimestamps: number[]): number {
-    const values = chartPointTimestamps.map(
-      (timestamp) => timestamp - chartPointTimestamps[0],
-    );
-    const ms = values[values.length - 1] - values[0];
-
-    console.log("values: ", values);
-    const avg = ms / (values.length - 1);
-    console.log("avg: ", avg);
-
-    const deviations = values.map((value, i) => {
-      if (i == 0) {
-        return 0;
-      }
-
-      const dif = value - values[i];
-
-      return Math.abs(avg * i - dif);
-    }).slice(1);
-    console.log("deviations: ", deviations);
-
-    const variance = _.sum(deviations);
-    const std = Math.sqrt(variance / values.length);
-
-    return std * 10;
-  }
-
-  function getBpm(clicks: number, ms: number): number {
-    const tapsPerSecond = clicks / (ms / 1000);
-    const result = (tapsPerSecond * 60) / 4;
-    return result;
-  }
-
-  function toggleIsRunningBenchmark() {
+  const toggleIsRunningBenchmark = useCallback(() => {
     if (!isRunningBenchmark) {
       setChartPoints([]);
     }
 
     setIsRunningBenchmark(!isRunningBenchmark);
-  }
+  }, [isRunningBenchmark]);
 
   function startBenchmark() {
     toggleIsRunningBenchmark();
@@ -121,16 +87,21 @@ export default function Home() {
           key: e.key,
           timestamp: now,
         };
+        setBPM(_.round(getBpm(chartPoints.length, ms)));
       }
 
       if ([key1, key2].includes(e.key.toUpperCase())) {
+        // Prevent key repeating (holding key)
+        if (e.repeat){
+          return
+        }
         setChartPoints((prevChartPoint) => [...prevChartPoint, chartPoint]);
 
         console.log([...chartPoints, chartPoint]);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chartPoints, isRunningBenchmark, key1, key2]);
+    
+  }, [chartPoints, isRunningBenchmark, key1, key2, toggleIsRunningBenchmark]);
 
   return (
     <>
@@ -235,9 +206,12 @@ export default function Home() {
 
         <section className="section mt-12 text-6xl font-bold">
           <div className="flex flex-col items-center">
-            <p>274 BPM</p>
+            <p>{BPM} BPM</p>
+
             <Button
-              className="text-foreground mt-4 cursor-pointer bg-sky-600 hover:bg-sky-600/75"
+              tabIndex={-1}
+              onFocus={(e) => e.target.blur()}
+              className="text-foreground cursor-pointer mt-4 bg-sky-600 hover:bg-sky-600/75"
               onClick={() => startBenchmark()}
             >
               {isRunningBenchmark ? "Stop Benchmark" : "Start Benchmark"}
