@@ -9,6 +9,8 @@ import { Clock, MousePointerClick } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChartNSH } from "@/components/ChartNSH";
 import { getBpm, getUr } from "../helpers/osuCalc";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { FaGithub } from "react-icons/fa";
 
 export default function Home() {
 	// Chart Related
@@ -276,14 +278,23 @@ export default function Home() {
 					<div className="flex flex-col items-center">
 						<p>{BPM} BPM</p>
 
-						<Button
-							tabIndex={-1}
-							onFocus={(e) => e.target.blur()}
-							className="text-foreground mt-4 cursor-pointer bg-sky-600 hover:bg-sky-600/75"
-							onClick={() => startBenchmark()}
-						>
-							{isRunningBenchmark ? "Stop Benchmark" : "Start Benchmark"}
-						</Button>
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										tabIndex={-1}
+										onFocus={(e) => e.target.blur()}
+										className="text-foreground mt-4 cursor-pointer bg-sky-600 hover:bg-sky-600/75"
+										onClick={() => startBenchmark()}
+									>
+										{isRunningBenchmark ? "Stop Benchmark" : "Start Benchmark"}
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent className="drop-shadow-2xl">
+									<span>{isRunningBenchmark ? "Press ESC to cancel" : "Press SPACE to start"}</span>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
 					</div>
 				</section>
 				<section className="section mt-20">
@@ -300,6 +311,14 @@ export default function Home() {
 					</div>
 				</section>
 			</div>
+
+			<Button
+				className="text-foreground fixed right-2 bottom-2 cursor-pointer rounded-md bg-zinc-800 hover:bg-zinc-800/75"
+				onClick={() => window.open("https://github.com/zNyash/osu-stream-benchmark")}
+			>
+				<FaGithub />
+				Repository
+			</Button>
 		</>
 	);
 }
