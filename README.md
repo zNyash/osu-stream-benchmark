@@ -4,9 +4,11 @@ Test your speed and stamina with [this]([https://osutapbench.netlify.app/](https
 
 ### ShortCuts:
 
-**Espace**: ```Start Benchmark```
 
-**Esc**: ```Cancel Benchmarking```
+
+
+<span>**Espace**: ```Start Benchmark```</span>
+<span>**Esc**: ```Cancel Benchmarking```</span>
 
 
 If you want more shorcuts feel free request them!
