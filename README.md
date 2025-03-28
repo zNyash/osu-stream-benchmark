@@ -6,7 +6,7 @@ Test your speed and stamina with [this](https://osutapbench.netlify.app/) awesom
 
 | Keybind | Action |
 | --- | --- |
-| **Espace** | Start Benchmark |
+| **Space** | Start Benchmark |
 | **Esc** | Cancel Benchmark |
 
 If you want more shorcuts feel free request them!
