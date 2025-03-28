@@ -17,15 +17,15 @@ function getUr(chartPointTimestamps: number[]): number {
 	// Calculate the average interval (mean). This gives the "expected" time between taps.
 	const avgInterval = _.mean(intervals);
 
-	// Calculate absolute deviations from the average interval
-	// For example, if avgInterval is 200ms and intervals are [200, 150, 250], the absolute deviations will be [0, 50, 50].
-	const absoluteDeviations = intervals.map((interval) => Math.abs(interval - avgInterval));
+	// Calculate squared deviations from the average interval
+	// For example, if avgInterval is 200ms and intervals are [200, 150, 250], the squared deviations would be [0, 2500, 2500].
+	const squaredDeviations = intervals.map((interval) => Math.pow(interval - avgInterval, 2));
 
-	// Calculate the Mean Absolute Deviation (MAD). This represents the average timing error between taps.
-	const meanAbsoluteDeviation = _.mean(absoluteDeviations);
+	// Calculate the standard deviation (square root of the mean of squared deviations)
+	const standardDeviation = Math.sqrt(_.mean(squaredDeviations));
 
-	// Return the Mean Absolute Deviation as the Unstable Rate, rounded to 2 decimal places.
-	return _.round(meanAbsoluteDeviation * 10, 2);
+	// Return the standard deviation as the Unstable Rate, rounded to 2 decimal places.
+	return _.round(standardDeviation * 10, 2);
 }
 
 function getBpm(clicks: number, ms: number): number {

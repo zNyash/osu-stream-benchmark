@@ -8,7 +8,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Clock, MousePointerClick } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChartNSH } from "@/components/ChartNSH";
-import { getBpm, getUr } from "../../helpers/osuCalc";
+import { getBpm, getUr } from "../helpers/osuCalc";
 
 export default function Home() {
 	// Chart Related
