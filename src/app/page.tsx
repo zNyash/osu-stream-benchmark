@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChartNSH } from "@/components/ChartNSH";
 import { getBpm, getUr } from "../helpers/osuCalc";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { FaGithub } from "react-icons/fa";
 
 export default function Home() {
 	// Chart Related
@@ -276,7 +277,7 @@ export default function Home() {
 				<section className="section mt-12 text-6xl font-bold">
 					<div className="flex flex-col items-center">
 						<p>{BPM} BPM</p>
-						
+
 						<TooltipProvider>
 							<Tooltip>
 								<TooltipTrigger asChild>
@@ -310,6 +311,14 @@ export default function Home() {
 					</div>
 				</section>
 			</div>
+
+			<Button
+				className="text-foreground fixed right-2 bottom-2 cursor-pointer rounded-md bg-zinc-800 hover:bg-zinc-800/75"
+				onClick={() => window.open("https://github.com/zNyash/osu-stream-benchmark")}
+			>
+				<FaGithub />
+				Repository
+			</Button>
 		</>
 	);
 }
