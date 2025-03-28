@@ -147,12 +147,12 @@ export default function Home() {
 					return;
 				}
 				setTotalTaps((prevTotal) => {
-          const newTotal = prevTotal + 1;
-          if (mode === "clicks" && newTotal >= clicks) {
-            toggleIsRunningBenchmark();
-          }
-          return newTotal;
-        });
+					const newTotal = prevTotal + 1;
+					if (mode === "clicks" && newTotal >= clicks) {
+						toggleIsRunningBenchmark();
+					}
+					return newTotal;
+				});
 
 				// Setting the information for display
 				setUR(urValue);
@@ -164,6 +164,20 @@ export default function Home() {
 			window.removeEventListener("keydown", handleKeyDown);
 		};
 	}, [clicks, isRunningBenchmark, key1, key2, mode, toggleIsRunningBenchmark]);
+
+	// Load keybinds from local storage on page load
+	useEffect(() => {
+		const storedKey1 = localStorage.getItem("key1");
+		const storedKey2 = localStorage.getItem("key2");
+		if (storedKey1) setKey1(storedKey1);
+		if (storedKey2) setKey2(storedKey2);
+	}, []); // No dependencies, runs only once on mount
+
+	// Save keybinds to local storage whenever they change
+	useEffect(() => {
+		localStorage.setItem("key1", key1);
+		localStorage.setItem("key2", key2);
+	}, [key1, key2]); // Runs only when key1 or key2 changes
 
 	return (
 		<>
@@ -177,7 +191,6 @@ export default function Home() {
 					>
 						My Stats
 					</Button>
-          <button className="bg-zinc-600">yeah</button>
 				</section>
 
 				<section className="section mt-24">
