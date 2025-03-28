@@ -1,6 +1,6 @@
 # osu! Tapping Benchmark
 
-Test your speed and stamina with [this](https://osutapbench.netlify.app/) awesome clean looking tool!
+Test your speed and stamina with [this]([https://osutapbench.netlify.app/](https://osutapbench.netlify.app/)) awesome clean looking tool!
 
 ### ShortCuts:
 
