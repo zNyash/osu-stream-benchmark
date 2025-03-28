@@ -15,6 +15,9 @@ export default function Home() {
 	const [isRunningBenchmark, setIsRunningBenchmark] = useState<boolean>(false);
 	const [chartPoints, setChartPoints] = useState<ChartPoint[]>([]);
 
+	// Tracking if the first valid keypress has occurred
+	const [hasFirstKeypress, setHasFirstKeypress] = useState<boolean>(false);
+
 	// Keybind variables & default
 	const [key1, setKey1] = useState<string>("Z");
 	const [key2, setKey2] = useState<string>("X");
@@ -43,10 +46,11 @@ export default function Home() {
 
 	const toggleIsRunningBenchmark = useCallback(() => {
 		if (!isRunningBenchmark) {
-			setStartTime(Date.now());
+			setStartTime(null);
 			setElapsedTime(0);
 			setChartPoints([]);
 			setTotalTaps(0);
+			setHasFirstKeypress(false);
 		} else {
 			setStartTime(null);
 		}
@@ -104,48 +108,64 @@ export default function Home() {
 	// Handle keypress
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
+			// Start benchmark with spacebar
 			if (e.key === " " && !isRunningBenchmark) {
 				toggleIsRunningBenchmark();
 				return;
 			}
 
+			// Exit if benchmark is not running
 			if (!isRunningBenchmark) {
 				return;
 			}
 
+			// Stop benchmark with Escape
 			if (e.key === "Escape") {
 				toggleIsRunningBenchmark();
+				return;
 			}
 
-			let chartPoint: ChartPoint;
-			const now = Date.now();
-			let urValue: number = 0;
+			// Check if this is one of the configured keys
+			const isValidKey = [key1, key2].includes(e.key.toUpperCase());
 
-			if (chartPointsRef.current.length === 0) {
-				chartPoint = {
-					seconds: 0,
-					bpm: 0,
-					ur: 0,
-					key: e.key,
-					timestamp: now,
-				};
-			} else {
-				const ms = now - chartPointsRef.current[0].timestamp;
-				urValue = getUr([..._.map(chartPointsRef.current, "timestamp"), now]);
-				chartPoint = {
-					seconds: _.floor(ms / 1000, 1),
-					bpm: getBpm(chartPointsRef.current.length, ms),
-					ur: urValue,
-					key: e.key,
-					timestamp: now,
-				};
+			// Ignore key repeats (holding key)
+			if (e.repeat) {
+				return;
 			}
 
-			if ([key1, key2].includes(e.key.toUpperCase())) {
-				// Prevent key repeating (holding key)
-				if (e.repeat) {
-					return;
+			// Only process valid keys
+			if (isValidKey) {
+				// If this is the first valid keypress, start the timer
+				if (!hasFirstKeypress) {
+					setStartTime(Date.now());
+					setHasFirstKeypress(true);
 				}
+
+				const now = Date.now();
+				let urValue: number = 0;
+				let chartPoint: ChartPoint;
+
+				if (chartPointsRef.current.length === 0) {
+					chartPoint = {
+						seconds: 0,
+						bpm: 0,
+						ur: 0,
+						key: e.key,
+						timestamp: now,
+					};
+				} else {
+					const ms = now - chartPointsRef.current[0].timestamp;
+					urValue = getUr([..._.map(chartPointsRef.current, "timestamp"), now]);
+					chartPoint = {
+						seconds: _.floor(ms / 1000, 1),
+						bpm: getBpm(chartPointsRef.current.length, ms),
+						ur: urValue,
+						key: e.key,
+						timestamp: now,
+					};
+				}
+
+				// Increment tap counter
 				setTotalTaps((prevTotal) => {
 					const newTotal = prevTotal + 1;
 					if (mode === "clicks" && newTotal >= clicks) {
@@ -159,11 +179,12 @@ export default function Home() {
 				setChartPoints((prevChartPoint) => [...prevChartPoint, chartPoint]);
 			}
 		};
+
 		window.addEventListener("keydown", handleKeyDown);
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [clicks, isRunningBenchmark, key1, key2, mode, toggleIsRunningBenchmark]);
+	}, [clicks, isRunningBenchmark, key1, key2, mode, toggleIsRunningBenchmark, hasFirstKeypress]);
 
 	// Load keybinds from local storage on page load
 	useEffect(() => {
