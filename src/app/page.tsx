@@ -21,7 +21,7 @@ export default function Home() {
 	const DEFAULT_SECONDS = 10;
 	const MIN_CLICKS = 3;
 	const MIN_SECONDS = 1;
-	
+
 	// Chart Related
 	const [isRunningBenchmark, setIsRunningBenchmark] = useState<boolean>(false);
 	const [chartPoints, setChartPoints] = useState<ChartPoint[]>([]);
@@ -38,13 +38,13 @@ export default function Home() {
 
 	// Counter mode and values code (Clicks or Seconds)
 	const [mode, setMode] = useState<BenchmarkConfig>({ mode: "clicks", clicksValue: DEFAULT_CLICKS, secondsValue: DEFAULT_SECONDS });
-	const handleModeChange = (newMode: BenchmarkMode) => {
+	const handleModeChange = useCallback((newMode: BenchmarkMode) => {
 		setMode((prevConfig: BenchmarkConfig) => ({
 			...prevConfig,
 			mode: newMode,
 		}));
-	};
-	const handleValueChange = (newValue: number) => {
+	}, []);
+	const handleValueChange = useCallback((newValue: number) => {
 		setMode((prevConfig: BenchmarkConfig) => {
 			if (prevConfig.mode === "clicks") {
 				return {
@@ -58,7 +58,7 @@ export default function Home() {
 				};
 			}
 		});
-	};
+	}, []);
 
 	// Refs to know which button was selected
 	const inputRef1 = useRef<HTMLInputElement>(null!);
@@ -101,35 +101,34 @@ export default function Home() {
 
 	// Handle timer
 	useEffect(() => {
-		let interval: ReturnType<typeof setInterval> | null = null;
+		if (!isRunningBenchmark && !startTime) return
+		
+		const interval = setInterval(() => {
+			const now = Date.now();
+			const newElapsedTime = startTime ? _.round((now - startTime) / 1000, 2) : 0;
+			setElapsedTime(newElapsedTime);
 
-		if (isRunningBenchmark && startTime) {
-			interval = setInterval(() => {
-				const now = Date.now();
-				const newElapsedTime = _.round((now - startTime) / 1000, 2);
-				setElapsedTime(newElapsedTime);
-
-				if (mode.mode === "seconds" && newElapsedTime >= mode.secondsValue) {
-					toggleIsRunningBenchmark();
-				}
-
-				if (chartPoints.length > 0) {
-					const ms = now - chartPoints[0].timestamp;
-					setBPM(_.round(getBpm(chartPoints.length, ms)));
-				}
-			}, 16);
-		} else {
-			if (interval) {
-				clearInterval(interval);
+			if (mode.mode === "seconds" && newElapsedTime >= mode.secondsValue) {
+				toggleIsRunningBenchmark();
 			}
-		}
+		}, 16);
+		
 
 		return () => {
 			if (interval) {
 				clearInterval(interval);
 			}
 		};
-	}, [isRunningBenchmark, startTime, chartPoints, mode, toggleIsRunningBenchmark]);
+	}, [isRunningBenchmark, startTime, mode, toggleIsRunningBenchmark]);
+
+	// Handle BPM calculation
+	useEffect(() => {
+		if (chartPoints.length > 1 && startTime) {
+			const now = Date.now();
+			const ms = now - chartPoints[0].timestamp;
+			setBPM(_.round(getBpm(chartPoints.length, ms)));
+		}
+	}, [chartPoints, startTime]);
 
 	const chartPointsRef = useRef(chartPoints);
 	chartPointsRef.current = chartPoints;
