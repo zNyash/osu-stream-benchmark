@@ -5,7 +5,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Clock, MousePointerClick } from "lucide-react";
 import { ModeSelectorProps } from "../app/types/mode-selector-props";
 
-export const ModeSelector: React.FC<ModeSelectorProps> = memo(({ mode, handleValueChange, Number, handleModeChange }) => (
+export const ModeSelector: React.FC<ModeSelectorProps> = memo(({ mode, handleValueChange, handleModeChange }) => (
 	<section className="section mt-24">
 		<div className="flex flex-col">
 			<Label className="gap-1">

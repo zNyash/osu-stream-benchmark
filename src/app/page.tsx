@@ -275,7 +275,7 @@ export default function Home() {
 			<div className="mb-12 flex flex-col items-center">
 				<Header />
 
-				<ModeSelector mode={mode} handleValueChange={handleValueChange} Number={Number} handleModeChange={handleModeChange} />
+				<ModeSelector mode={mode} handleValueChange={handleValueChange} handleModeChange={handleModeChange} />
 
 				<section className="section mt-2">
 					<div>
