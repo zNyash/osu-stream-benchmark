@@ -11,8 +11,17 @@ import { ChartNSH } from "@/components/ChartNSH";
 import { getBpm, getUr } from "../helpers/osuCalc";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FaGithub } from "react-icons/fa";
+import { BenchmarkConfig, BenchmarkMode } from "./types/benchmark-mode";
 
 export default function Home() {
+	// Magic numbers
+	const DEFAULT_KEY_1 = "Z";
+	const DEFAULT_KEY_2 = "X";
+	const DEFAULT_CLICKS = 100;
+	const DEFAULT_SECONDS = 10;
+	const MIN_CLICKS = 3;
+	const MIN_SECONDS = 1;
+	
 	// Chart Related
 	const [isRunningBenchmark, setIsRunningBenchmark] = useState<boolean>(false);
 	const [chartPoints, setChartPoints] = useState<ChartPoint[]>([]);
@@ -21,18 +30,35 @@ export default function Home() {
 	const [hasFirstKeypress, setHasFirstKeypress] = useState<boolean>(false);
 
 	// Keybind variables & default
-	const [key1, setKey1] = useState<string>("Z");
-	const [key2, setKey2] = useState<string>("X");
+	const [key1, setKey1] = useState<string>(DEFAULT_KEY_1);
+	const [key2, setKey2] = useState<string>(DEFAULT_KEY_2);
 
 	// Key Counter
 	const [totalTaps, setTotalTaps] = useState<number>(0);
 
-	// Counter mode (Clicks or Seconds)
-	const [mode, setMode] = useState<"clicks" | "seconds">("clicks");
-
-	// Default values for each mode (can also update then)
-	const [clicks, setClicks] = useState<number>(100);
-	const [seconds, setSeconds] = useState<number>(60);
+	// Counter mode and values code (Clicks or Seconds)
+	const [mode, setMode] = useState<BenchmarkConfig>({ mode: "clicks", clicksValue: DEFAULT_CLICKS, secondsValue: DEFAULT_SECONDS });
+	const handleModeChange = (newMode: BenchmarkMode) => {
+		setMode((prevConfig: BenchmarkConfig) => ({
+			...prevConfig,
+			mode: newMode,
+		}));
+	};
+	const handleValueChange = (newValue: number) => {
+		setMode((prevConfig: BenchmarkConfig) => {
+			if (prevConfig.mode === "clicks") {
+				return {
+					...prevConfig,
+					clicksValue: Math.max(newValue, MIN_CLICKS),
+				};
+			} else {
+				return {
+					...prevConfig,
+					secondsValue: Math.max(newValue, MIN_SECONDS),
+				};
+			}
+		});
+	};
 
 	// Refs to know which button was selected
 	const inputRef1 = useRef<HTMLInputElement>(null!);
@@ -83,7 +109,7 @@ export default function Home() {
 				const newElapsedTime = _.round((now - startTime) / 1000, 2);
 				setElapsedTime(newElapsedTime);
 
-				if (mode === "seconds" && newElapsedTime >= seconds) {
+				if (mode.mode === "seconds" && newElapsedTime >= mode.secondsValue) {
 					toggleIsRunningBenchmark();
 				}
 
@@ -103,7 +129,7 @@ export default function Home() {
 				clearInterval(interval);
 			}
 		};
-	}, [isRunningBenchmark, startTime, chartPoints, mode, seconds, toggleIsRunningBenchmark]);
+	}, [isRunningBenchmark, startTime, chartPoints, mode, toggleIsRunningBenchmark]);
 
 	const chartPointsRef = useRef(chartPoints);
 	chartPointsRef.current = chartPoints;
@@ -170,7 +196,7 @@ export default function Home() {
 				// Increment tap counter
 				setTotalTaps((prevTotal) => {
 					const newTotal = prevTotal + 1;
-					if (mode === "clicks" && newTotal >= clicks) {
+					if (mode.mode === "clicks" && newTotal >= mode.clicksValue) {
 						toggleIsRunningBenchmark();
 					}
 					return newTotal;
@@ -186,21 +212,38 @@ export default function Home() {
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [clicks, isRunningBenchmark, key1, key2, mode, toggleIsRunningBenchmark, hasFirstKeypress]);
+	}, [isRunningBenchmark, key1, key2, mode, toggleIsRunningBenchmark, hasFirstKeypress]);
 
 	// Load keybinds from local storage on page load
 	useEffect(() => {
 		const storedKey1 = localStorage.getItem("key1");
 		const storedKey2 = localStorage.getItem("key2");
+		const storedMode = localStorage.getItem("benchmarkMode");
 		if (storedKey1) setKey1(storedKey1);
 		if (storedKey2) setKey2(storedKey2);
-	}, []); // No dependencies, runs only once on mount
+		if (storedMode) {
+			try {
+				const parsedMode = JSON.parse(storedMode);
+				if (
+					parsedMode &&
+					typeof parsedMode.mode === "string" &&
+					typeof parsedMode.clicksValue === "number" &&
+					typeof parsedMode.secondsValue === "number"
+				) {
+					setMode(parsedMode);
+				}
+			} catch (e) {
+				console.error("Failed to parse stored benchmark mode: ", e);
+			}
+		}
+	}, []);
 
 	// Save keybinds to local storage whenever they change
 	useEffect(() => {
 		localStorage.setItem("key1", key1);
 		localStorage.setItem("key2", key2);
-	}, [key1, key2]); // Runs only when key1 or key2 changes
+		localStorage.setItem("benchmarkMode", JSON.stringify(mode));
+	}, [key1, key2, mode]);
 
 	return (
 		<>
@@ -218,26 +261,30 @@ export default function Home() {
 
 				<section className="section mt-24">
 					<div className="flex flex-col">
-						<Label className="gap-1">Stop at {mode === "clicks" ? <span>{clicks} clicks</span> : <span>{seconds} seconds</span>}</Label>
+						<Label className="gap-1">
+							Stop at {mode.mode === "clicks" ? <span>{mode.clicksValue} clicks</span> : <span>{mode.secondsValue} seconds</span>}
+						</Label>
 						<div className="flex">
-							{mode === "clicks" ? (
-								<Input type="number" min={3} className="input rounded-r-none" value={clicks} onChange={(e) => setClicks(Number(e.target.value))} />
-							) : (
-								<Input type="number" min={1} className="input rounded-r-none" value={seconds} onChange={(e) => setSeconds(Number(e.target.value))} />
-							)}
+							<Input
+								type="number"
+								min={mode.mode === "clicks" ? 3 : 1}
+								className="input rounded-r-none"
+								value={mode.mode === "clicks" ? mode.clicksValue : mode.secondsValue}
+								onChange={(e) => handleValueChange(Number(e.target.value))}
+							/>
 
-							<ToggleGroup type="single" variant="nsh">
+							<ToggleGroup type="single" variant="nsh" value={mode.mode}>
 								<ToggleGroupItem
 									value="clicks"
-									className={`first:rounded-l-none ${mode === "clicks" ? "bg-zinc-700 hover:bg-zinc-700" : ""}`}
-									onClick={() => setMode("clicks")}
+									className={`first:rounded-l-none ${mode.mode === "clicks" ? "bg-zinc-700 hover:bg-zinc-700" : ""}`}
+									onClick={() => handleModeChange("clicks")}
 								>
 									<MousePointerClick />
 								</ToggleGroupItem>
 								<ToggleGroupItem
 									value="seconds"
-									onClick={() => setMode("seconds")}
-									className={mode === "seconds" ? "bg-zinc-700 hover:bg-zinc-700" : ""}
+									onClick={() => handleModeChange("seconds")}
+									className={mode.mode === "seconds" ? "bg-zinc-700 hover:bg-zinc-700" : ""}
 								>
 									<Clock />
 								</ToggleGroupItem>
