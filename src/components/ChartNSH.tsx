@@ -1,10 +1,5 @@
 "use client";
-import {
-	ChartConfig,
-	ChartContainer,
-	ChartTooltip,
-	ChartTooltipContent,
-} from "@/components/ui/chart";
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { ChartPoint } from "@/app/types/chart-point";
 import _ from "lodash";
@@ -27,10 +22,7 @@ export function ChartNSH({ data }: ChartNSHProps) {
 
 	return (
 		<div>
-			<ChartContainer
-				config={chartConfig}
-				className="min-w-110 rounded-sm border border-zinc-800 bg-zinc-950/25"
-			>
+			<ChartContainer config={chartConfig} className="min-w-110 rounded-sm border border-zinc-800 bg-zinc-950/25">
 				<LineChart
 					accessibilityLayer
 					data={data}
@@ -53,20 +45,8 @@ export function ChartNSH({ data }: ChartNSHProps) {
 					/>
 					<YAxis dataKey="bpm" tickLine={true} axisLine={false} tickMargin={8} />
 					<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-					<Line
-						dataKey="bpm"
-						type="linear"
-						stroke={chartConfig.bpm.color}
-						strokeWidth={2}
-						dot={false}
-					/>
-					<Line
-						dataKey="ur"
-						type="linear"
-						stroke={chartConfig.ur.color}
-						strokeWidth={2}
-						dot={false}
-					/>
+					<Line dataKey="bpm" type="linear" stroke={chartConfig.bpm.color} strokeWidth={2} dot={false} />
+					<Line dataKey="ur" type="linear" stroke={chartConfig.ur.color} strokeWidth={2} dot={false} />
 				</LineChart>
 			</ChartContainer>
 		</div>

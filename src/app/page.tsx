@@ -1,5 +1,5 @@
 "use client";
-import { GithubButton } from '../components/GithubButton'
+import { GithubButton } from "../components/GithubButton";
 import { ModeSelector } from "../components/ModeSelector";
 import { Header } from "../components/Header";
 import { ChartPoint } from "@/app/types/chart-point";
@@ -129,78 +129,81 @@ export default function Home() {
 
 	const chartPointsRef = useRef(chartPoints);
 	chartPointsRef.current = chartPoints;
+
+	// Tap processing function
+	const handleTap = useCallback(
+		(inputType: "key" | "mouse", identifier: string | number) => {
+			if (!hasFirstKeypress) {
+				setStartTime(Date.now());
+				setHasFirstKeypress(true);
+			}
+
+			const now = Date.now();
+			let urValue = 0;
+			let chartPoint;
+
+			const currentChartPoints = chartPointsRef.current;
+			const firstTimestamp = currentChartPoints.length > 0 ? currentChartPoints[0].timestamp : now;
+
+			if (currentChartPoints.length === 0) {
+				chartPoint = {
+					seconds: 0,
+					bpm: 0,
+					ur: 0,
+					key: String(identifier),
+					timestamp: now,
+				};
+			} else {
+				const allTimestamps = [..._.map(currentChartPoints, "timestamp"), now];
+				const msSinceFirstTap = now - firstTimestamp;
+
+				urValue = getUr(allTimestamps);
+				chartPoint = {
+					seconds: _.floor(msSinceFirstTap / 1000, 1),
+					bpm: getBpm(currentChartPoints.length + 1, msSinceFirstTap),
+					ur: urValue,
+					key: String(identifier),
+					timestamp: now,
+				};
+			}
+
+			setTotalTaps((prevTotal) => {
+				const newTotal = prevTotal + 1;
+				if (mode.mode === "clicks" && newTotal >= mode.clicksValue) {
+					setIsRunningBenchmark(false);
+					setStartTime(null);
+				}
+				return newTotal;
+			});
+
+			setUR(urValue);
+			setChartPoints((prevChartPoints) => [...prevChartPoints, chartPoint]);
+		},
+		[hasFirstKeypress, mode.mode, mode.clicksValue],
+	);
+
 	// Handle keypress
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
-			// Start benchmark with spacebar
 			if (e.key === " " && !isRunningBenchmark) {
 				toggleIsRunningBenchmark();
 				return;
 			}
 
-			// Exit if benchmark is not running
-			if (!isRunningBenchmark) {
-				return;
-			}
+			if (!isRunningBenchmark) return;
 
-			// Stop benchmark with Escape
 			if (e.key === "Escape") {
 				toggleIsRunningBenchmark();
 				return;
 			}
 
-			// Check if this is one of the configured keys
-			const isValidKey = [key1, key2].includes(e.key.toUpperCase());
+			const upperCaseKey = e.key.toUpperCase();
+			const isValidKey = [key1, key2].includes(upperCaseKey);
 
-			// Ignore key repeats (holding key)
-			if (e.repeat) {
-				return;
-			}
+			if (e.repeat) return;
 
-			// Only process valid keys
 			if (isValidKey) {
-				// If this is the first valid keypress, start the timer
-				if (!hasFirstKeypress) {
-					setStartTime(Date.now());
-					setHasFirstKeypress(true);
-				}
-
-				const now = Date.now();
-				let urValue: number = 0;
-				let chartPoint: ChartPoint;
-
-				if (chartPointsRef.current.length === 0) {
-					chartPoint = {
-						seconds: 0,
-						bpm: 0,
-						ur: 0,
-						key: e.key,
-						timestamp: now,
-					};
-				} else {
-					const ms = now - chartPointsRef.current[0].timestamp;
-					urValue = getUr([..._.map(chartPointsRef.current, "timestamp"), now]);
-					chartPoint = {
-						seconds: _.floor(ms / 1000, 1),
-						bpm: getBpm(chartPointsRef.current.length, ms),
-						ur: urValue,
-						key: e.key,
-						timestamp: now,
-					};
-				}
-
-				// Increment tap counter
-				setTotalTaps((prevTotal) => {
-					const newTotal = prevTotal + 1;
-					if (mode.mode === "clicks" && newTotal >= mode.clicksValue) {
-						toggleIsRunningBenchmark();
-					}
-					return newTotal;
-				});
-
-				// Setting the information for display
-				setUR(urValue);
-				setChartPoints((prevChartPoint) => [...prevChartPoint, chartPoint]);
+				handleTap("key", upperCaseKey);
 			}
 		};
 
@@ -208,7 +211,33 @@ export default function Home() {
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [isRunningBenchmark, key1, key2, mode, toggleIsRunningBenchmark, hasFirstKeypress]);
+	}, [isRunningBenchmark, key1, key2, toggleIsRunningBenchmark, handleTap]);
+
+	// Handle mouse clicks
+	useEffect(() => {
+		const handleMouseDown = (e: MouseEvent) => {
+			if (!isRunningBenchmark) return;
+
+			if (e.button === 0 || e.button === 2) {
+				e.preventDefault();
+				handleTap("mouse", e.button);
+			}
+		};
+
+		const handleContextMenu = (e: MouseEvent) => {
+			if (isRunningBenchmark) {
+				e.preventDefault();
+			}
+		};
+
+		window.addEventListener("mousedown", handleMouseDown);
+		window.addEventListener("contextmenu", handleContextMenu);
+
+		return () => {
+			window.removeEventListener("mousedown", handleMouseDown);
+			window.removeEventListener("contextmenu", handleContextMenu);
+		};
+	}, [isRunningBenchmark, handleTap]);
 
 	// Load keybinds from local storage on page load
 	useEffect(() => {
