@@ -1,18 +1,25 @@
 "use client";
+import { GithubButton } from "../components/GithubButton";
+import { ModeSelector } from "../components/ModeSelector";
+import { Header } from "../components/Header";
 import { ChartPoint } from "@/app/types/chart-point";
 import _ from "lodash";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Clock, MousePointerClick } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChartNSH } from "@/components/ChartNSH";
 import { getBpm, getUr } from "../helpers/osuCalc";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { FaGithub } from "react-icons/fa";
+import { BenchmarkConfig, BenchmarkMode } from "./types/benchmark-mode";
 
 export default function Home() {
+	// Magic numbers
+	const DEFAULT_KEY_1 = "Z";
+	const DEFAULT_KEY_2 = "X";
+	const DEFAULT_CLICKS = 100;
+	const DEFAULT_SECONDS = 10;
+	const MIN_CLICKS = 3;
+	const MIN_SECONDS = 1;
+
 	// Chart Related
 	const [isRunningBenchmark, setIsRunningBenchmark] = useState<boolean>(false);
 	const [chartPoints, setChartPoints] = useState<ChartPoint[]>([]);
@@ -21,18 +28,35 @@ export default function Home() {
 	const [hasFirstKeypress, setHasFirstKeypress] = useState<boolean>(false);
 
 	// Keybind variables & default
-	const [key1, setKey1] = useState<string>("Z");
-	const [key2, setKey2] = useState<string>("X");
+	const [key1, setKey1] = useState<string>(DEFAULT_KEY_1);
+	const [key2, setKey2] = useState<string>(DEFAULT_KEY_2);
 
 	// Key Counter
 	const [totalTaps, setTotalTaps] = useState<number>(0);
 
-	// Counter mode (Clicks or Seconds)
-	const [mode, setMode] = useState<"clicks" | "seconds">("clicks");
-
-	// Default values for each mode (can also update then)
-	const [clicks, setClicks] = useState<number>(100);
-	const [seconds, setSeconds] = useState<number>(60);
+	// Counter mode and values code (Clicks or Seconds)
+	const [mode, setMode] = useState<BenchmarkConfig>({ mode: "clicks", clicksValue: DEFAULT_CLICKS, secondsValue: DEFAULT_SECONDS });
+	const handleModeChange = useCallback((newMode: BenchmarkMode) => {
+		setMode((prevConfig: BenchmarkConfig) => ({
+			...prevConfig,
+			mode: newMode,
+		}));
+	}, []);
+	const handleValueChange = useCallback((newValue: number) => {
+		setMode((prevConfig: BenchmarkConfig) => {
+			if (prevConfig.mode === "clicks") {
+				return {
+					...prevConfig,
+					clicksValue: Math.max(newValue, MIN_CLICKS),
+				};
+			} else {
+				return {
+					...prevConfig,
+					secondsValue: Math.max(newValue, MIN_SECONDS),
+				};
+			}
+		});
+	}, []);
 
 	// Refs to know which button was selected
 	const inputRef1 = useRef<HTMLInputElement>(null!);
@@ -75,110 +99,111 @@ export default function Home() {
 
 	// Handle timer
 	useEffect(() => {
-		let interval: ReturnType<typeof setInterval> | null = null;
+		if (!isRunningBenchmark && !startTime) return;
 
-		if (isRunningBenchmark && startTime) {
-			interval = setInterval(() => {
-				const now = Date.now();
-				const newElapsedTime = _.round((now - startTime) / 1000, 2);
-				setElapsedTime(newElapsedTime);
+		const interval = setInterval(() => {
+			const now = Date.now();
+			const newElapsedTime = startTime ? _.round((now - startTime) / 1000, 2) : 0;
+			setElapsedTime(newElapsedTime);
 
-				if (mode === "seconds" && newElapsedTime >= seconds) {
-					toggleIsRunningBenchmark();
-				}
-
-				if (chartPoints.length > 0) {
-					const ms = now - chartPoints[0].timestamp;
-					setBPM(_.round(getBpm(chartPoints.length, ms)));
-				}
-			}, 16);
-		} else {
-			if (interval) {
-				clearInterval(interval);
+			if (mode.mode === "seconds" && newElapsedTime >= mode.secondsValue) {
+				toggleIsRunningBenchmark();
 			}
-		}
+		}, 16);
 
 		return () => {
 			if (interval) {
 				clearInterval(interval);
 			}
 		};
-	}, [isRunningBenchmark, startTime, chartPoints, mode, seconds, toggleIsRunningBenchmark]);
+	}, [isRunningBenchmark, startTime, mode, toggleIsRunningBenchmark]);
+
+	// Handle BPM calculation
+	useEffect(() => {
+		if (chartPoints.length > 1 && startTime) {
+			const now = Date.now();
+			const ms = now - chartPoints[0].timestamp;
+			setBPM(_.round(getBpm(chartPoints.length, ms)));
+		}
+	}, [chartPoints, startTime]);
 
 	const chartPointsRef = useRef(chartPoints);
 	chartPointsRef.current = chartPoints;
+
+	// Tap processing function
+	const handleTap = useCallback(
+		(inputType: "key" | "mouse", identifier: string | number) => {
+			if (!hasFirstKeypress) {
+				setStartTime(Date.now());
+				setHasFirstKeypress(true);
+			}
+
+			const now = Date.now();
+			let urValue = 0;
+			let chartPoint;
+
+			const currentChartPoints = chartPointsRef.current;
+			const firstTimestamp = currentChartPoints.length > 0 ? currentChartPoints[0].timestamp : now;
+
+			if (currentChartPoints.length === 0) {
+				chartPoint = {
+					seconds: 0,
+					bpm: 0,
+					ur: 0,
+					key: String(identifier),
+					timestamp: now,
+				};
+			} else {
+				const allTimestamps = [..._.map(currentChartPoints, "timestamp"), now];
+				const msSinceFirstTap = now - firstTimestamp;
+
+				urValue = getUr(allTimestamps);
+				chartPoint = {
+					seconds: _.floor(msSinceFirstTap / 1000, 1),
+					bpm: getBpm(currentChartPoints.length + 1, msSinceFirstTap),
+					ur: urValue,
+					key: String(identifier),
+					timestamp: now,
+				};
+			}
+
+			setTotalTaps((prevTotal) => {
+				const newTotal = prevTotal + 1;
+				if (mode.mode === "clicks" && newTotal >= mode.clicksValue) {
+					setIsRunningBenchmark(false);
+					setStartTime(null);
+				}
+				return newTotal;
+			});
+
+			setUR(urValue);
+			setChartPoints((prevChartPoints) => [...prevChartPoints, chartPoint]);
+		},
+		[hasFirstKeypress, mode.mode, mode.clicksValue],
+	);
+
 	// Handle keypress
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
-			// Start benchmark with spacebar
 			if (e.key === " " && !isRunningBenchmark) {
 				toggleIsRunningBenchmark();
 				return;
 			}
 
-			// Exit if benchmark is not running
-			if (!isRunningBenchmark) {
-				return;
-			}
+			if (!isRunningBenchmark) return;
 
-			// Stop benchmark with Escape
 			if (e.key === "Escape") {
 				toggleIsRunningBenchmark();
 				return;
 			}
 
-			// Check if this is one of the configured keys
-			const isValidKey = [key1, key2].includes(e.key.toUpperCase());
+			const upperCaseKey = e.key.toUpperCase();
+			const isValidKey = [key1, key2].includes(upperCaseKey);
 
-			// Ignore key repeats (holding key)
-			if (e.repeat) {
-				return;
-			}
+			if (e.repeat) return;
 
-			// Only process valid keys
 			if (isValidKey) {
-				// If this is the first valid keypress, start the timer
-				if (!hasFirstKeypress) {
-					setStartTime(Date.now());
-					setHasFirstKeypress(true);
-				}
-
-				const now = Date.now();
-				let urValue: number = 0;
-				let chartPoint: ChartPoint;
-
-				if (chartPointsRef.current.length === 0) {
-					chartPoint = {
-						seconds: 0,
-						bpm: 0,
-						ur: 0,
-						key: e.key,
-						timestamp: now,
-					};
-				} else {
-					const ms = now - chartPointsRef.current[0].timestamp;
-					urValue = getUr([..._.map(chartPointsRef.current, "timestamp"), now]);
-					chartPoint = {
-						seconds: _.floor(ms / 1000, 1),
-						bpm: getBpm(chartPointsRef.current.length, ms),
-						ur: urValue,
-						key: e.key,
-						timestamp: now,
-					};
-				}
-
-				// Increment tap counter
-				setTotalTaps((prevTotal) => {
-					const newTotal = prevTotal + 1;
-					if (mode === "clicks" && newTotal >= clicks) {
-						toggleIsRunningBenchmark();
-					}
-					return newTotal;
-				});
-
-				// Setting the information for display
-				setUR(urValue);
-				setChartPoints((prevChartPoint) => [...prevChartPoint, chartPoint]);
+				handleTap("key", upperCaseKey);
 			}
 		};
 
@@ -186,65 +211,71 @@ export default function Home() {
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [clicks, isRunningBenchmark, key1, key2, mode, toggleIsRunningBenchmark, hasFirstKeypress]);
+	}, [isRunningBenchmark, key1, key2, toggleIsRunningBenchmark, handleTap]);
+
+	// Handle mouse clicks
+	useEffect(() => {
+		const handleMouseDown = (e: MouseEvent) => {
+			if (!isRunningBenchmark) return;
+
+			if (e.button === 0 || e.button === 2) {
+				e.preventDefault();
+				handleTap("mouse", e.button);
+			}
+		};
+
+		const handleContextMenu = (e: MouseEvent) => {
+			if (isRunningBenchmark) {
+				e.preventDefault();
+			}
+		};
+
+		window.addEventListener("mousedown", handleMouseDown);
+		window.addEventListener("contextmenu", handleContextMenu);
+
+		return () => {
+			window.removeEventListener("mousedown", handleMouseDown);
+			window.removeEventListener("contextmenu", handleContextMenu);
+		};
+	}, [isRunningBenchmark, handleTap]);
 
 	// Load keybinds from local storage on page load
 	useEffect(() => {
 		const storedKey1 = localStorage.getItem("key1");
 		const storedKey2 = localStorage.getItem("key2");
+		const storedMode = localStorage.getItem("benchmarkMode");
 		if (storedKey1) setKey1(storedKey1);
 		if (storedKey2) setKey2(storedKey2);
-	}, []); // No dependencies, runs only once on mount
+		if (storedMode) {
+			try {
+				const parsedMode = JSON.parse(storedMode);
+				if (
+					parsedMode &&
+					typeof parsedMode.mode === "string" &&
+					typeof parsedMode.clicksValue === "number" &&
+					typeof parsedMode.secondsValue === "number"
+				) {
+					setMode(parsedMode);
+				}
+			} catch (e) {
+				console.error("Failed to parse stored benchmark mode: ", e);
+			}
+		}
+	}, []);
 
 	// Save keybinds to local storage whenever they change
 	useEffect(() => {
 		localStorage.setItem("key1", key1);
 		localStorage.setItem("key2", key2);
-	}, [key1, key2]); // Runs only when key1 or key2 changes
+		localStorage.setItem("benchmarkMode", JSON.stringify(mode));
+	}, [key1, key2, mode]);
 
 	return (
 		<>
 			<div className="mb-12 flex flex-col items-center">
-				<section className="relative flex w-full max-w-[1300px] flex-row md:justify-center">
-					<h1 className="mt-2 pt-1.5 pl-3 text-2xl font-medium md:text-4xl">osu! Tapping Benchmark</h1>
-					<Button
-						variant={"ghost"}
-						className="absolute top-3 right-3 cursor-pointer"
-						onClick={() => window.open("https://www.youtube.com/watch?v=dQw4w9WgXcQ")}
-					>
-						My Stats
-					</Button>
-				</section>
+				<Header />
 
-				<section className="section mt-24">
-					<div className="flex flex-col">
-						<Label className="gap-1">Stop at {mode === "clicks" ? <span>{clicks} clicks</span> : <span>{seconds} seconds</span>}</Label>
-						<div className="flex">
-							{mode === "clicks" ? (
-								<Input type="number" min={3} className="input rounded-r-none" value={clicks} onChange={(e) => setClicks(Number(e.target.value))} />
-							) : (
-								<Input type="number" min={1} className="input rounded-r-none" value={seconds} onChange={(e) => setSeconds(Number(e.target.value))} />
-							)}
-
-							<ToggleGroup type="single" variant="nsh">
-								<ToggleGroupItem
-									value="clicks"
-									className={`first:rounded-l-none ${mode === "clicks" ? "bg-zinc-700 hover:bg-zinc-700" : ""}`}
-									onClick={() => setMode("clicks")}
-								>
-									<MousePointerClick />
-								</ToggleGroupItem>
-								<ToggleGroupItem
-									value="seconds"
-									onClick={() => setMode("seconds")}
-									className={mode === "seconds" ? "bg-zinc-700 hover:bg-zinc-700" : ""}
-								>
-									<Clock />
-								</ToggleGroupItem>
-							</ToggleGroup>
-						</div>
-					</div>
-				</section>
+				<ModeSelector mode={mode} handleValueChange={handleValueChange} Number={Number} handleModeChange={handleModeChange} />
 
 				<section className="section mt-2">
 					<div>
@@ -312,13 +343,7 @@ export default function Home() {
 				</section>
 			</div>
 
-			<Button
-				className="text-foreground fixed right-2 bottom-2 cursor-pointer rounded-md bg-zinc-800 hover:bg-zinc-800/75"
-				onClick={() => window.open("https://github.com/zNyash/osu-stream-benchmark")}
-			>
-				<FaGithub />
-				Repository
-			</Button>
+			<GithubButton />
 		</>
 	);
 }
