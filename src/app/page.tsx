@@ -1,16 +1,14 @@
 "use client";
+import { GithubButton } from '../components/GithubButton'
+import { ModeSelector } from "../components/ModeSelector";
+import { Header } from "../components/Header";
 import { ChartPoint } from "@/app/types/chart-point";
 import _ from "lodash";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Clock, MousePointerClick } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChartNSH } from "@/components/ChartNSH";
 import { getBpm, getUr } from "../helpers/osuCalc";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { FaGithub } from "react-icons/fa";
 import { BenchmarkConfig, BenchmarkMode } from "./types/benchmark-mode";
 
 export default function Home() {
@@ -101,8 +99,8 @@ export default function Home() {
 
 	// Handle timer
 	useEffect(() => {
-		if (!isRunningBenchmark && !startTime) return
-		
+		if (!isRunningBenchmark && !startTime) return;
+
 		const interval = setInterval(() => {
 			const now = Date.now();
 			const newElapsedTime = startTime ? _.round((now - startTime) / 1000, 2) : 0;
@@ -112,7 +110,6 @@ export default function Home() {
 				toggleIsRunningBenchmark();
 			}
 		}, 16);
-		
 
 		return () => {
 			if (interval) {
@@ -247,50 +244,9 @@ export default function Home() {
 	return (
 		<>
 			<div className="mb-12 flex flex-col items-center">
-				<section className="relative flex w-full max-w-[1300px] flex-row md:justify-center">
-					<h1 className="mt-2 pt-1.5 pl-3 text-2xl font-medium md:text-4xl">osu! Tapping Benchmark</h1>
-					<Button
-						variant={"ghost"}
-						className="absolute top-3 right-3 cursor-pointer"
-						onClick={() => window.open("https://www.youtube.com/watch?v=dQw4w9WgXcQ")}
-					>
-						My Stats
-					</Button>
-				</section>
+				<Header />
 
-				<section className="section mt-24">
-					<div className="flex flex-col">
-						<Label className="gap-1">
-							Stop at {mode.mode === "clicks" ? <span>{mode.clicksValue} clicks</span> : <span>{mode.secondsValue} seconds</span>}
-						</Label>
-						<div className="flex">
-							<Input
-								type="number"
-								min={mode.mode === "clicks" ? 3 : 1}
-								className="input rounded-r-none"
-								value={mode.mode === "clicks" ? mode.clicksValue : mode.secondsValue}
-								onChange={(e) => handleValueChange(Number(e.target.value))}
-							/>
-
-							<ToggleGroup type="single" variant="nsh" value={mode.mode}>
-								<ToggleGroupItem
-									value="clicks"
-									className={`first:rounded-l-none ${mode.mode === "clicks" ? "bg-zinc-700 hover:bg-zinc-700" : ""}`}
-									onClick={() => handleModeChange("clicks")}
-								>
-									<MousePointerClick />
-								</ToggleGroupItem>
-								<ToggleGroupItem
-									value="seconds"
-									onClick={() => handleModeChange("seconds")}
-									className={mode.mode === "seconds" ? "bg-zinc-700 hover:bg-zinc-700" : ""}
-								>
-									<Clock />
-								</ToggleGroupItem>
-							</ToggleGroup>
-						</div>
-					</div>
-				</section>
+				<ModeSelector mode={mode} handleValueChange={handleValueChange} Number={Number} handleModeChange={handleModeChange} />
 
 				<section className="section mt-2">
 					<div>
@@ -358,13 +314,7 @@ export default function Home() {
 				</section>
 			</div>
 
-			<Button
-				className="text-foreground fixed right-2 bottom-2 cursor-pointer rounded-md bg-zinc-800 hover:bg-zinc-800/75"
-				onClick={() => window.open("https://github.com/zNyash/osu-stream-benchmark")}
-			>
-				<FaGithub />
-				Repository
-			</Button>
+			<GithubButton />
 		</>
 	);
 }
