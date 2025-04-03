@@ -9,6 +9,10 @@ input::-webkit-inner-spin-button {
   margin: 0;
 }
 
+* {
+  user-select: none;
+}
+
 .section {
   @apply relative flex w-full max-w-[1300px] flex-row justify-center
 }
